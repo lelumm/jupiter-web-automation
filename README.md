@@ -93,9 +93,32 @@ Copy `.env.example` to `.env` to override locally. `.env` is gitignored.
 
 ## Continuous integration
 
-[.github/workflows/playwright.yml](.github/workflows/playwright.yml) runs on pushes and pull requests to `main` or `master`, and can be started manually from the Actions tab. It installs dependencies and Chromium, typechecks, runs the tests, and uploads the HTML report and `test-results/` as artifacts, including when tests fail.
+[.github/workflows/playwright.yml](.github/workflows/playwright.yml) runs on pushes and pull requests to `main`, and can be started manually from the Actions tab. It installs dependencies and Chromium, typechecks, runs the tests, and uploads the HTML report and `test-results/` as artifacts, including when tests fail.
 
 In CI mode, JUnit results are written to `test-results/junit.xml`.
+
+### Reports
+
+| Reporter | Where | Output |
+| -------- | ----- | ------ |
+| `list` | Local and CI | Live pass/fail in the terminal |
+| `html` | Local and CI | `playwright-report/` (steps, errors, screenshots, traces) |
+| `junit` | CI only | `test-results/junit.xml` |
+
+The report and `test-results/` are uploaded as the **playwright-report** artifact and kept for 30 days. A trace is captured on the first retry of a failing test.
+
+To view a CI report:
+
+1. Download the artifact from the **Artifacts** section at the bottom of the run summary in the Actions tab, or use the GitHub CLI:
+
+   ```bash
+   gh run list --limit 3                                    # find the run id
+   gh run download <run-id> -n playwright-report -D ci-report
+   ```
+
+2. Open it with `npx playwright show-report ci-report/playwright-report`. Opening `index.html` directly can show a blank page, so use `show-report`.
+
+`ci-report/` is not gitignored, so delete it when you are done.
 
 ## Adding a test
 
