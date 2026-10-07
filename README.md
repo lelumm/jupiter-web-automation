@@ -77,9 +77,10 @@ Copy `.env.example` to `.env` to override locally. `.env` is gitignored.
 │   └── index.ts              # Registers page objects; exports test and expect
 ├── test-data/                # Typed test data (products, contact details)
 ├── utils/                    # Helpers (e.g. money.ts converts "$10.99" to cents)
+├── specs/                    # Test plans written by the planner agent
 ├── playwright.config.ts      # Base URL, reporters, retries, browser project
 ├── .github/workflows/        # GitHub Actions pipeline
-└── .claude/skills/           # Claude Code project skills
+└── .claude/                  # Claude Code project skills and test agents
 ```
 
 ### Design
@@ -90,6 +91,33 @@ Copy `.env.example` to `.env` to override locally. `.env` is gitignored.
 - **Locators** are user-facing (`getByRole`, `getByText`), not CSS or XPath.
 - **Money is handled as whole cents** to avoid floating-point rounding errors.
 - **Slow submission:** the contact form takes about 15 seconds to confirm, so only that assertion has a 60 second timeout. There are no fixed sleeps.
+
+## Playwright test agents
+
+The repo includes [Playwright Test Agents](https://playwright.dev/docs/test-agents), set up with `npx playwright init-agents --loop=claude`. They run locally in Claude Code and are not part of CI.
+
+| Agent | Definition | What it does |
+| ----- | ---------- | ------------ |
+| Planner | [.claude/agents/playwright-test-planner.md](.claude/agents/playwright-test-planner.md) | Explores the site in a browser and writes a Markdown test plan to `specs/` |
+| Generator | [.claude/agents/playwright-test-generator.md](.claude/agents/playwright-test-generator.md) | Turns a plan into a spec under `tests/` by running each step in a real browser |
+| Healer | [.claude/agents/playwright-test-healer.md](.claude/agents/playwright-test-healer.md) | Runs failing tests, inspects the live page, and patches the spec |
+
+Supporting files:
+
+- `specs/`: test plans written by the planner.
+- [tests/seed.spec.ts](tests/seed.spec.ts): the starting state for the agents. It uses the repo fixtures and opens the home page.
+- [.mcp.json](.mcp.json): registers the `playwright-test` MCP server the agents use, next to the general `playwright` server.
+
+Each agent file ends with a "Project conventions" section so output follows this repo's rules: fixtures imports, page objects, user-facing locators, `@smoke`/`@regression` tags, and no fixed waits.
+
+Typical flow:
+
+1. Ask the planner to explore an area (for example the shop) and save a plan in `specs/`.
+2. Ask the generator to create a spec from one plan item.
+3. Review the generated spec: move raw locators into a page object, and rename it to `tests/<feature>/tcN-short-name.spec.ts`.
+4. When a test breaks, ask the healer to fix it, then review the change.
+
+Re-running `init-agents` (for example after a Playwright upgrade) overwrites the agent files, so check `git diff` and keep the "Project conventions" section. Generated tests are drafts and must pass `npm run typecheck` and `npm test` before they are committed.
 
 ## Continuous integration
 
